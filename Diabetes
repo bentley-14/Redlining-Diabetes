@@ -1,0 +1,86 @@
+Miami <- read.csv("Miami.csv")
+Houston <- read.csv("Houston.csv")
+Cleveland <- read.csv("Cleveland.csv")
+Access <- read.csv("FoodAccessResearchAtlasData2019.csv")
+Redlining <- read.csv("Historic Redlining Score 2020B.csv")
+AllCities <- rbind(Miami,Houston,Cleveland)
+x1 <- subset(Redlining, GEOID20 %in% AllCities$Location)
+x2 <- subset(AllCities, Location %in% Redlining$GEOID20)
+
+colnames(x1)[1] <- "Location"
+
+x2_2018 <- subset(x2, Period.of.Measure == 2018)
+x2_2019 <- subset(x2, Period.of.Measure == 2019)
+x2_2020 <- subset(x2, Period.of.Measure == 2020)
+
+AllCities2018 <- merge(x1, x2_2018, by = "Location")
+AllCities2019 <- merge(x1, x2_2019, by = "Location")
+AllCities2020 <- merge(x1, x2_2020, by = "Location")
+
+colnames(Access)[1] <- "Location"
+RedlineAccess <- subset(Access, Location %in% x2$Location)
+
+AllCities2018 <- merge(AllCities2018, Access, by = "Location")
+AllCities2019 <- merge(AllCities2019, Access, by = "Location")
+AllCities2020 <- merge(AllCities2020, Access, by = "Location")
+
+model_2018 <- lm(AllCities2018$Indicator.Rate.Value~AllCities2018$HRS2020)
+model_2019 <- lm(AllCities2019$Indicator.Rate.Value~AllCities2019$HRS2020)
+model_2020 <- lm(AllCities2020$Indicator.Rate.Value~AllCities2020$HRS2020)
+
+residuals2018 <- resid(model_2018)
+iqr2018 <- quantile(residuals2018, probs = c(0.25, 0.75))
+iqr2018 <- iqr2018[2] - iqr2018[1]
+lower_bound2018 <- quantile(residuals2018, probs = 0.25) - 1.5*iqr2018
+upper_bound2018 <- quantile(residuals2018, probs = 0.75) + 1.5*iqr2018
+outlier_rows2018 <- which(residuals2018 < lower_bound2018 | residuals2018 > upper_bound2018)
+outlier_rows2018 <- as.vector(outlier_rows2018)
+AllCities2018_filtered <- subset(AllCities2018, !(row.names(AllCities2018) %in% outlier_rows2018))
+
+residuals2019 <- resid(model_2019)
+iqr2019 <- quantile(residuals2019, probs = c(0.25, 0.75))
+iqr2019 <- iqr2019[2] - iqr2019[1]
+lower_bound2019 <- quantile(residuals2019, probs = 0.25) - 1.5*iqr2019
+upper_bound2019 <- quantile(residuals2019, probs = 0.75) + 1.5*iqr2019
+outlier_rows2019 <- which(residuals2019 < lower_bound2019 | residuals2019 > upper_bound2019)
+outlier_rows2019 <- as.vector(outlier_rows2019)
+AllCities2019_filtered <- subset(AllCities2019, !(row.names(AllCities2019) %in% outlier_rows2019))
+
+residuals2020 <- resid(model_2020)
+iqr2020 <- quantile(residuals2020, probs = c(0.25, 0.75))
+iqr2020 <- iqr2020[2] - iqr2020[1]
+lower_bound2020 <- quantile(residuals2020, probs = 0.25) - 1.5*iqr2020
+upper_bound2020 <- quantile(residuals2020, probs = 0.75) + 1.5*iqr2020
+outlier_rows2020 <- which(residuals2020 < lower_bound2020 | residuals2020 > upper_bound2020)
+outlier_rows2020<- as.vector(outlier_rows2020)
+AllCities2020_filtered <- subset(AllCities2020, !(row.names(AllCities2020) %in% outlier_rows2020))
+
+model2_2018 <- lm(AllCities2018_filtered$Indicator.Rate.Value~AllCities2018_filtered$HRS2020)
+model2_2019 <- lm(AllCities2019_filtered$Indicator.Rate.Value~AllCities2019_filtered$HRS2020)
+model2_2020 <- lm(AllCities2020_filtered$Indicator.Rate.Value~AllCities2020_filtered$HRS2020)
+
+plot(AllCities2018_filtered$HRS2020,AllCities2018_filtered$Indicator.Rate.Value)
+intercept2018 <- model2_2018$coefficients[1]
+slope2018 <- model2_2018$coefficients[2]
+abline(intercept2018, slope2018)
+
+summary(model2_2018)
+
+plot(AllCities2019_filtered$HRS2020,AllCities2019_filtered$Indicator.Rate.Value)
+intercept2019 <- model2_2019$coefficients[1]
+slope2019 <- model2_2019$coefficients[2]
+abline(intercept2019, slope2019)
+
+summary(model2_2019)
+
+plot(AllCities2020_filtered$HRS2020,AllCities2020_filtered$Indicator.Rate.Value)
+intercept2020 <- model2_2020$coefficients[1]
+slope2020 <- model2_2020$coefficients[2]
+abline(intercept2020, slope2020)
+
+summary(model2_2020)
+
+
+AccessDistribution <- c(mean(subset(AllCities2019_filtered, INTERVAL2020 == 1)$LILATracts_halfAnd10),mean(subset(AllCities2019_filtered, INTERVAL2020 == 2)$LILATracts_halfAnd10),mean(subset(AllCities2019_filtered, INTERVAL2020 == 3)$LILATracts_halfAnd10),mean(subset(AllCities2019_filtered, INTERVAL2020 == 4)$LILATracts_halfAnd10))
+AccessDistribution <- as.data.frame(AccessDistribution)
+row.names(AccessDistribution) <- c("A","B","C","D")
